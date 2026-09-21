@@ -6,22 +6,28 @@ Este proyecto ha sido desarrollado siguiendo los más altos estándares académi
 
 ## 🚀 Características Principales
 
-- **Autenticación Segura:** Registro e inicio de sesión gestionados mediante Firebase Authentication.
-- **Gestión de Mascotas:** CRUD completo (Crear, Leer, Actualizar, Eliminar) para múltiples mascotas asociadas a un solo dueño.
-- **Controles de Salud:** Historial detallado de vacunaciones, desparasitaciones y revisiones veterinarias.
-- **Seguimiento de Actividades:** Registro de tareas diarias como alimentación, paseos y medicación con sistema de check-list.
-- **Asistente de IA:** Integración con API de Inteligencia Artificial para ofrecer recomendaciones generales sobre el cuidado animal.
-- **Arquitectura MVVM:** Separación clara de responsabilidades (Model - View - ViewModel) para un código mantenible y escalable.
+- **Autenticación Segura:** Registro e inicio de sesión con Firebase Auth, incluyendo visibilidad de contraseña y opción de recordatorio.
+- **Gestión Multi-Mascota:** Registro completo de mascotas con soporte para múltiples fotografías (hasta 5) y acceso a cámara/galería con gestión de permisos en tiempo de ejecución.
+- **Historial de Salud:** Control detallado de vacunaciones, desparasitaciones y chequeos médicos con categorización visual.
+- **Seguimiento de Actividades:** Registro de tareas diarias y cuidados generales.
+- **Asistente de IA:** Integración para recomendaciones personalizadas sobre el cuidado animal.
+- **Arquitectura MVVM:** Implementación limpia y escalable con Jetpack Compose y StateFlow.
 
 ## 🛠️ Stack Tecnológico
 
 - **Lenguaje:** [Kotlin](https://kotlinlang.org/)
-- **Interfaz de Usuario:** [Jetpack Compose](https://developer.android.com/jetpack/compose) con Material 3
-- **Arquitectura:** MVVM + Repository Pattern
-- **Backend:** [Firebase](https://firebase.google.com/) (Auth, Cloud Firestore, Storage)
-- **Networking:** [Retrofit](https://square.github.io/retrofit/) + OkHttp para consumo de APIs REST
-- **Manejo de Estados:** Kotlin Coroutines & StateFlow
-- **Carga de Imágenes:** Coil
+- **Interfaz de Usuario:** [Jetpack Compose](https://developer.android.com/jetpack/compose) con Material 3 y Shapes personalizados.
+- **Arquitectura:** MVVM + Repository Pattern.
+- **Backend:** [Firebase](https://firebase.google.com/) (Auth, Cloud Firestore, Storage).
+- **Networking:** [Retrofit](https://square.github.io/retrofit/) + OkHttp.
+- **Manejo de Estados:** Coroutines & StateFlow.
+- **Carga de Imágenes:** Coil.
+
+## 🛡️ Seguridad
+El proyecto incluye mejores prácticas de seguridad:
+- Gestión de permisos en tiempo de ejecución (Android 6.0+).
+- Exclusión de archivos sensibles (`google-services.json`) mediante `.gitignore`.
+- Flujo de autenticación robusto.
 
 ## 🏗️ Arquitectura del Proyecto
 La aplicación implementa un flujo de datos unidireccional:
