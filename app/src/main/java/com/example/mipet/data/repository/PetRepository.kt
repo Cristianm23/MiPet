@@ -26,13 +26,16 @@ class PetRepository(
             val docRef = firestore.collection("mascotas").document()
             val uploadedUrls = mutableListOf<String>()
 
-            imageUris.forEachIndexed { index, uri ->
+            for (index in imageUris.indices) {
+                val uri = imageUris[index]
                 val storageRef = storage.reference.child("mascotas/${docRef.id}/photo_$index.jpg")
-                val uploadTask = storageRef.putFile(uri).await()
-                if (uploadTask.task.isSuccessful) {
-                    val url = storageRef.downloadUrl.await().toString()
-                    uploadedUrls.add(url)
-                }
+                
+                // Upload the file
+                storageRef.putFile(uri).await()
+                
+                // Get the download URL
+                val url = storageRef.downloadUrl.await().toString()
+                uploadedUrls.add(url)
             }
 
             val petWithIds = pet.copy(id = docRef.id, userId = currentUserId, photoUrls = uploadedUrls)
