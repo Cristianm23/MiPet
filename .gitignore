@@ -1,0 +1,30 @@
+# Android Studio / IntelliJ
+*.iml
+.gradle
+/local.properties
+/.idea/
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Firebase
+app/google-services.json
+
+# Build outputs
+*.apk
+*.aar
+*.ap_
+*.dex
+*.class
+
+# Log files
+*.log
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# Artifacts directory (optional, but recommended if they contain logs/traces)
+.artifacts/
