@@ -8,18 +8,23 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 class AiRepository {
     private val retrofit = Retrofit.Builder()
-        .baseUrl("https://api.example.com/ai/")
+        .baseUrl("https://hook.us2.make.com/")
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
     private val service = retrofit.create(AiService::class.java)
 
+    private val webhookEndpoint = "bquzs3agksy49lyu2hhat6j3lafh3o52"
+
     suspend fun getRecommendation(prompt: String): Resource<String> {
         return try {
-            val response = service.getRecommendation(AiRequest(prompt))
+            val response = service.getRecommendation(
+                webhookUrl = webhookEndpoint,
+                request = AiRequest(prompt)
+            )
             Resource.Success(response.text)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Error de IA")
+            Resource.Error(e.message ?: "Error al conectar con la IA de MiPet")
         }
     }
 }
