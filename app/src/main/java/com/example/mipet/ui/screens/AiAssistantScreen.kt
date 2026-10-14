@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.mipet.data.model.Resource
+import com.example.mipet.ui.components.VoiceAgentComponent
 import com.example.mipet.ui.viewmodel.AiViewModel
 
 @Composable
@@ -37,12 +38,23 @@ fun AiAssistantScreen(navController: NavController, viewModel: AiViewModel = vie
             is Resource.Loading -> CircularProgressIndicator()
             is Resource.Error -> Text("Error: ${state.message}", color = MaterialTheme.colorScheme.error)
             is Resource.Success -> {
-                if (state.data?.isNotEmpty() == true) {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = state.data,
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.bodyLarge
+                val data = state.data
+                if (data != null && (data.text.isNotEmpty() || data.voiceAgent)) {
+                    if (data.text.isNotEmpty()) {
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = data.text,
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+
+                    if (data.voiceAgent) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        VoiceAgentComponent(
+                            accessToken = data.accessToken,
+                            onCloseCall = { viewModel.resetState() }
                         )
                     }
                 }
