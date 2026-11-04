@@ -1,10 +1,12 @@
 package com.example.mipet.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,9 +28,10 @@ fun HomeScreen(navController: NavController) {
                 val items = listOf(
                     Triple("Inicio", Icons.Default.Home, Screen.Home.route),
                     Triple("Mascotas", Icons.Default.Pets, Screen.PetList.route),
+                    Triple("Veterinarias", Icons.Default.Place, Screen.VetMap.route),
                     Triple("Asistente", Icons.AutoMirrored.Filled.Chat, Screen.AiAssistant.route)
                 )
-                
+
                 items.forEach { (label, icon, route) ->
                     NavigationBarItem(
                         selected = route == Screen.Home.route,
@@ -60,9 +63,9 @@ fun HomeScreen(navController: NavController) {
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
@@ -83,6 +86,36 @@ fun HomeScreen(navController: NavController) {
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { navController.navigate(Screen.VetMap.route) },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Place, contentDescription = null, tint = Turquoise, modifier = Modifier.size(32.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            "Veterinarias Cercanas (5 km) 📍",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            "Encuentra clínicas, teléfonos y cómo llegar.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                        )
+                    }
                 }
             }
         }

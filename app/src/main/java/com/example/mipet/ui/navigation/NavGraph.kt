@@ -21,6 +21,7 @@ fun NavGraph(navController: NavHostController) {
             val petId = backStackEntry.arguments?.getString("petId") ?: ""
             PetDetailScreen(navController, petId)
         }
+        composable(Screen.VetMap.route) { VetMapScreen(navController) }
         composable(Screen.AiAssistant.route) { AiAssistantScreen(navController) }
         composable(Screen.Profile.route) { ProfileScreen(navController) }
         composable(Screen.AddPet.route) { AddPetScreen(navController) }

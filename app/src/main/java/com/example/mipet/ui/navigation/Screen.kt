@@ -9,6 +9,7 @@ sealed class Screen(val route: String) {
     object PetDetail : Screen("pet_detail/{petId}") {
         fun createRoute(petId: String) = "pet_detail/$petId"
     }
+    object VetMap : Screen("vet_map")
     object AiAssistant : Screen("ai_assistant")
     object Profile : Screen("profile")
     object AddPet : Screen("add_pet")
