@@ -1,5 +1,6 @@
 package com.example.mipet.ui.screens
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -179,6 +180,7 @@ fun DetailContent(
     }
 }
 
+@SuppressLint("NonObservableLocale")
 @Composable
 fun HealthCard(control: HealthControl) {
     val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())

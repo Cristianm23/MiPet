@@ -207,17 +207,23 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                     uiSettings = MapUiSettings(zoomControlsEnabled = true, myLocationButtonEnabled = true)
                 ) {
                     // User Location Marker
+                    val userMarkerState = remember(currentLat, currentLng) {
+                        MarkerState(position = LatLng(currentLat, currentLng))
+                    }
                     Marker(
-                        state = MarkerState(position = LatLng(currentLat, currentLng)),
+                        state = userMarkerState,
                         title = "Tu Ubicación",
                         snippet = locationLabel
                     )
 
                     // Vet Markers
                     currentVets.forEach { vet ->
+                        val vetMarkerState = remember(vet.id, vet.latitude, vet.longitude) {
+                            MarkerState(position = LatLng(vet.latitude, vet.longitude))
+                        }
                         val isSelected = selectedVet?.id == vet.id
                         Marker(
-                            state = MarkerState(position = LatLng(vet.latitude, vet.longitude)),
+                            state = vetMarkerState,
                             title = vet.name,
                             snippet = "${vet.address} • ⭐ ${vet.rating} • ${vet.distanceKm} km",
                             onClick = {

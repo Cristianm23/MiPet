@@ -1,5 +1,6 @@
 package com.example.mipet.ui.screens
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +20,7 @@ import com.example.mipet.ui.viewmodel.HealthViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+@SuppressLint("NonObservableLocale")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddHealthControlScreen(
