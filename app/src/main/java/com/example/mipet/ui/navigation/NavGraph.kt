@@ -29,5 +29,11 @@ fun NavGraph(navController: NavHostController) {
             val petId = backStackEntry.arguments?.getString("petId") ?: ""
             AddHealthControlScreen(navController, petId)
         }
+        composable(Screen.UserList.route) { UserListScreen(navController) }
+        composable(Screen.ChatDetail.route) { backStackEntry ->
+            val partnerUid = backStackEntry.arguments?.getString("partnerUid") ?: ""
+            val partnerName = backStackEntry.arguments?.getString("partnerName") ?: ""
+            ChatDetailScreen(navController, partnerUid, partnerName)
+        }
     }
 }

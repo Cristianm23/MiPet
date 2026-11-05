@@ -16,4 +16,8 @@ sealed class Screen(val route: String) {
     object AddHealthControl : Screen("add_health_control/{petId}") {
         fun createRoute(petId: String) = "add_health_control/$petId"
     }
+    object UserList : Screen("user_list")
+    object ChatDetail : Screen("chat_detail/{partnerUid}/{partnerName}") {
+        fun createRoute(partnerUid: String, partnerName: String) = "chat_detail/$partnerUid/$partnerName"
+    }
 }
