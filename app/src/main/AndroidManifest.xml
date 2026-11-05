@@ -20,6 +20,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MiPet">
 
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDTfQX_kbhEb1uTLQR94CT5OxgbAcG2pRQ" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

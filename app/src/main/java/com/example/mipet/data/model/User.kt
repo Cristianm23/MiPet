@@ -4,5 +4,7 @@ data class User(
     val uid: String = "",
     val name: String = "",
     val email: String = "",
+    val description: String = "",
+    val photoUrl: String = "",
     val registrationDate: Long = System.currentTimeMillis()
 )

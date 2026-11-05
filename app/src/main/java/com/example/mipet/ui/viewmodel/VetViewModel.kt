@@ -71,6 +71,14 @@ class VetViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun resetToGpsLocation(lat: Double, lng: Double) {
+        _isCustomSearch.value = false
+        _searchQuery.value = ""
+        _locationLabel.value = "Tu Ubicación GPS"
+        _userLocation.value = Pair(lat, lng)
+        loadNearbyVets(lat, lng, cityName = "Bogotá")
+    }
+
     fun resetToGpsLocation() {
         _isCustomSearch.value = false
         _searchQuery.value = ""

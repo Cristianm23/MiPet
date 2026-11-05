@@ -8,8 +8,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -33,6 +37,34 @@ fun PetListScreen(navController: NavController, viewModel: PetViewModel = viewMo
     val petsState by viewModel.pets.collectAsState()
 
     Scaffold(
+        bottomBar = {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                val items = listOf(
+                    Triple("Inicio", Icons.Default.Home, Screen.Home.route),
+                    Triple("Mascotas", Icons.Default.Pets, Screen.PetList.route),
+                    Triple("Veterinarias", Icons.Default.Place, Screen.VetMap.route),
+                    Triple("Asistente", Icons.AutoMirrored.Filled.Chat, Screen.AiAssistant.route),
+                    Triple("Perfil", Icons.Default.Person, Screen.Profile.route)
+                )
+
+                items.forEach { (label, icon, route) ->
+                    NavigationBarItem(
+                        selected = route == Screen.PetList.route,
+                        onClick = { if (route != Screen.PetList.route) navController.navigate(route) },
+                        icon = { Icon(icon, contentDescription = label) },
+                        label = { Text(label) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Turquoise,
+                            selectedTextColor = Turquoise,
+                            unselectedIconColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                        )
+                    )
+                }
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate(Screen.AddPet.route) },

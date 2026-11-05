@@ -31,6 +31,36 @@ class AuthRepository(
         }
     }
 
+    suspend fun getUserProfile(uid: String): Resource<User> {
+        return try {
+            val doc = firestore.collection("usuarios").document(uid).get().await()
+            val user = doc.toObject(User::class.java) ?: User(uid = uid)
+            Resource.Success(user)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Error al cargar perfil")
+        }
+    }
+
+    suspend fun updateUserProfile(uid: String, name: String, description: String, photoUrl: String): Resource<Boolean> {
+        return try {
+            val updates = mapOf(
+                "name" to name,
+                "description" to description,
+                "photoUrl" to photoUrl
+            )
+            firestore.collection("usuarios").document(uid).update(updates).await()
+            Resource.Success(true)
+        } catch (e: Exception) {
+            try {
+                val user = User(uid = uid, name = name, description = description, photoUrl = photoUrl)
+                firestore.collection("usuarios").document(uid).set(user).await()
+                Resource.Success(true)
+            } catch (ex: Exception) {
+                Resource.Error(ex.message ?: "Error al actualizar perfil")
+            }
+        }
+    }
+
     fun logout() = auth.signOut()
 
     fun getCurrentUser() = auth.currentUser

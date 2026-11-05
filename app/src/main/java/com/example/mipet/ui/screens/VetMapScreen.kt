@@ -10,9 +10,6 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
-import android.webkit.JavascriptInterface
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -42,6 +39,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
@@ -77,7 +75,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -86,10 +83,16 @@ import com.example.mipet.data.model.Vet
 import com.example.mipet.ui.navigation.Screen
 import com.example.mipet.ui.theme.Turquoise
 import com.example.mipet.ui.viewmodel.VetViewModel
-import org.json.JSONArray
-import org.json.JSONObject
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
+import com.google.maps.android.compose.rememberCameraPositionState
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewModel()) {
     val context = LocalContext.current
@@ -101,8 +104,7 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
     val showRoute by viewModel.showRoute.collectAsState()
 
     var searchQueryText by remember { mutableStateOf("") }
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
-    var viewMode by remember { mutableStateOf(0) }
+    var viewMode by remember { mutableStateOf(0) } // 0: Mapa Google Maps, 1: Lista
 
     var hasLocationPermission by remember {
         mutableStateOf(
@@ -128,7 +130,7 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                 viewModel.updateLocationFromGps(lat, lng)
             }
         } else {
-            viewModel.updateLocationFromGps(4.6097, -74.0817)
+            viewModel.updateLocationFromGps(4.6097, -74.0817) // Bogotá Default
         }
     }
 
@@ -147,6 +149,20 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
         }
     }
 
+    val currentLat = userLocation?.first ?: 4.6097
+    val currentLng = userLocation?.second ?: -74.0817
+    val currentVets = (vetsState as? Resource.Success)?.data ?: emptyList()
+
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(LatLng(currentLat, currentLng), 14f)
+    }
+
+    LaunchedEffect(userLocation) {
+        userLocation?.let { (lat, lng) ->
+            cameraPositionState.position = CameraPosition.fromLatLngZoom(LatLng(lat, lng), 14f)
+        }
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar(
@@ -157,7 +173,8 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                     Triple("Inicio", Icons.Default.Home, Screen.Home.route),
                     Triple("Mascotas", Icons.Default.Pets, Screen.PetList.route),
                     Triple("Veterinarias", Icons.Default.Place, Screen.VetMap.route),
-                    Triple("Asistente", Icons.AutoMirrored.Filled.Chat, Screen.AiAssistant.route)
+                    Triple("Asistente", Icons.AutoMirrored.Filled.Chat, Screen.AiAssistant.route),
+                    Triple("Perfil", Icons.Default.Person, Screen.Profile.route)
                 )
 
                 items.forEach { (label, icon, route) ->
@@ -181,67 +198,56 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            val currentLat = userLocation?.first ?: 4.6097
-            val currentLng = userLocation?.second ?: -74.0817
-            val currentVets = (vetsState as? Resource.Success)?.data ?: emptyList()
-
             if (viewMode == 0) {
-                AndroidView(
+                // Google Maps Integration using Google Maps Compose
+                GoogleMap(
                     modifier = Modifier.fillMaxSize(),
-                    factory = { ctx ->
-                        WebView(ctx).apply {
-                            webViewRef = this
-                            settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = true
-                            settings.allowContentAccess = true
-                            settings.allowFileAccess = true
-                            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                            settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; MiPetApp/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+                    cameraPositionState = cameraPositionState,
+                    properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
+                    uiSettings = MapUiSettings(zoomControlsEnabled = true, myLocationButtonEnabled = true)
+                ) {
+                    // User Location Marker
+                    Marker(
+                        state = MarkerState(position = LatLng(currentLat, currentLng)),
+                        title = "Tu Ubicación",
+                        snippet = locationLabel
+                    )
 
-                            webChromeClient = object : android.webkit.WebChromeClient() {
-                                override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
-                                    println("VetMap Console: [${consoleMessage?.messageLevel()}] ${consoleMessage?.message()}")
-                                    return true
-                                }
+                    // Vet Markers
+                    currentVets.forEach { vet ->
+                        val isSelected = selectedVet?.id == vet.id
+                        Marker(
+                            state = MarkerState(position = LatLng(vet.latitude, vet.longitude)),
+                            title = vet.name,
+                            snippet = "${vet.address} • ⭐ ${vet.rating} • ${vet.distanceKm} km",
+                            onClick = {
+                                viewModel.selectVet(vet)
+                                true
                             }
-
-                            addJavascriptInterface(object {
-                                @JavascriptInterface
-                                fun onVetSelected(vetId: String) {
-                                    val found = currentVets.find { it.id == vetId }
-                                    if (found != null) {
-                                        viewModel.selectVet(found)
-                                    }
-                                }
-                            }, "AndroidMap")
-
-                            webViewClient = object : WebViewClient() {
-                                override fun onPageFinished(view: WebView?, url: String?) {
-                                    updateMapData(view, currentLat, currentLng, currentVets, selectedVet, showRoute)
-                                }
-                            }
-
-                            loadDataWithBaseURL(
-                                "https://mt1.google.com",
-                                getMapHtmlContent(),
-                                "text/html",
-                                "UTF-8",
-                                null
-                            )
-                        }
-                    },
-                    update = { webView ->
-                        updateMapData(webView, currentLat, currentLng, currentVets, selectedVet, showRoute)
+                        )
                     }
-                )
+
+                    // Route Polyline if route is active
+                    if (showRoute && selectedVet != null) {
+                        Polyline(
+                            points = listOf(
+                                LatLng(currentLat, currentLng),
+                                LatLng(selectedVet!!.latitude, selectedVet!!.longitude)
+                            ),
+                            color = Turquoise,
+                            width = 10f
+                        )
+                    }
+                }
             } else {
+                // List View Mode
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(top = 135.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
                 ) {
                     Text(
-                        "$locationLabel - (${currentVets.size} cerca):",
+                        "$locationLabel - (${currentVets.size} veterinarias encontradas):",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -261,7 +267,7 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { viewModel.selectVet(vet) },
+                                        .clickable { viewModel.selectVet(vet); viewMode = 0 },
                                     shape = RoundedCornerShape(16.dp),
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
@@ -319,6 +325,7 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                 }
             }
 
+            // Top Search & Controls Overlay
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -345,7 +352,7 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                             TextField(
                                 value = searchQueryText,
                                 onValueChange = { searchQueryText = it },
-                                placeholder = { Text("Buscar ciudad (ej. Medellín)...") },
+                                placeholder = { Text("Buscar ciudad o veterinaria...") },
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                                 keyboardActions = KeyboardActions(onSearch = {
                                     if (searchQueryText.isNotBlank()) {
@@ -365,9 +372,9 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                                 if (searchQueryText.isNotBlank()) {
                                     viewModel.searchAddress(searchQueryText)
                                 } else {
-                                    viewModel.resetToGpsLocation()
+                                    searchQueryText = ""
                                     fetchDeviceLocation(context) { lat, lng ->
-                                        viewModel.updateLocationFromGps(lat, lng)
+                                        viewModel.resetToGpsLocation(lat, lng)
                                     }
                                 }
                             }) {
@@ -388,7 +395,7 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                             FilterChip(
                                 selected = viewMode == 0,
                                 onClick = { viewMode = 0 },
-                                label = { Text("🗺️ Mapa") },
+                                label = { Text("🗺️ Google Maps") },
                                 modifier = Modifier.weight(1f)
                             )
                             FilterChip(
@@ -418,7 +425,7 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "Escribe tu ciudad o dirección arriba y presiona buscar.",
+                                "Escribe tu ciudad o veterinaria arriba y presiona buscar.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
@@ -427,6 +434,7 @@ fun VetMapScreen(navController: NavController, viewModel: VetViewModel = viewMod
                 }
             }
 
+            // Bottom Selected Vet Detail Card
             AnimatedVisibility(
                 visible = selectedVet != null,
                 modifier = Modifier
@@ -593,164 +601,4 @@ private fun fetchDeviceLocation(context: Context, onLocationReceived: (Double, D
         e.printStackTrace()
         onLocationReceived(4.6097, -74.0817)
     }
-}
-
-private fun updateMapData(
-    webView: WebView?,
-    lat: Double,
-    lng: Double,
-    vets: List<Vet>,
-    selectedVet: Vet?,
-    showRoute: Boolean
-) {
-    if (webView == null) return
-    val vetsJson = JSONArray()
-    vets.forEach { vet ->
-        val item = JSONObject().apply {
-            put("id", vet.id)
-            put("name", vet.name)
-            put("address", vet.address)
-            put("phone", vet.phone)
-            put("lat", vet.latitude)
-            put("lng", vet.longitude)
-            put("distanceKm", vet.distanceKm)
-            put("isOpen", vet.isOpen)
-        }
-        vetsJson.put(item)
-    }
-
-    val selectedVetId = selectedVet?.id ?: ""
-    val targetVetLat = selectedVet?.latitude ?: 0.0
-    val targetVetLng = selectedVet?.longitude ?: 0.0
-
-    val script = "javascript:if(window.updateMap){ window.updateMap($lat, $lng, $vetsJson, '$selectedVetId', $showRoute, $targetVetLat, $targetVetLng); }"
-    webView.evaluateJavascript(script, null)
-}
-
-private fun getMapHtmlContent(): String {
-    return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-            <style>
-                html, body, #map { width: 100%; height: 100%; margin: 0; padding: 0; background: #e5e3df; }
-            </style>
-        </head>
-        <body>
-            <div id="map"></div>
-            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-            <script>
-                var map = null;
-                var userMarker = null;
-                var radiusCircle = null;
-                var vetMarkers = [];
-                var routePolyline = null;
-                var pendingMapData = null;
-
-                function initMap() {
-                    if (map || typeof L === 'undefined') return;
-
-                    map = L.map('map', { zoomControl: false }).setView([4.6097, -74.0817], 14);
-
-                    L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                        maxZoom: 19,
-                        subdomains: 'abcd',
-                        attribution: '© OpenStreetMap © CARTO'
-                    }).addTo(map);
-
-                    setTimeout(function() {
-                        map.invalidateSize();
-                    }, 300);
-
-                    if (pendingMapData) {
-                        window.updateMap.apply(null, pendingMapData);
-                    }
-                }
-
-                window.updateMap = function(userLat, userLng, vetsList, selectedVetId, showRoute, targetLat, targetLng) {
-                    if (!map || typeof L === 'undefined') {
-                        pendingMapData = [userLat, userLng, vetsList, selectedVetId, showRoute, targetLat, targetLng];
-                        initMap();
-                        return;
-                    }
-
-                    map.invalidateSize();
-                    var userPos = [userLat, userLng];
-
-                    map.setView(userPos, 14);
-
-                    if (userMarker) map.removeLayer(userMarker);
-                    userMarker = L.circleMarker(userPos, {
-                        radius: 10,
-                        color: '#FFFFFF',
-                        weight: 3,
-                        fillColor: '#1A73E8',
-                        fillOpacity: 1
-                    }).addTo(map).bindPopup("<b>Tu Ubicación</b>");
-
-                    if (radiusCircle) map.removeLayer(radiusCircle);
-                    radiusCircle = L.circle(userPos, {
-                        radius: 5000,
-                        color: '#1A73E8',
-                        weight: 2,
-                        dashArray: '5, 10',
-                        fillColor: '#1A73E8',
-                        fillOpacity: 0.08
-                    }).addTo(map);
-
-                    vetMarkers.forEach(function(m) { map.removeLayer(m); });
-                    vetMarkers = [];
-
-                    if (routePolyline) {
-                        map.removeLayer(routePolyline);
-                        routePolyline = null;
-                    }
-
-                    vetsList.forEach(function(vet) {
-                        var vetPos = [vet.lat, vet.lng];
-                        var isSelected = (vet.id === selectedVetId);
-
-                        var markerColor = isSelected ? '#D93025' : '#EA4335';
-                        var marker = L.circleMarker(vetPos, {
-                            radius: isSelected ? 14 : 10,
-                            color: '#FFFFFF',
-                            weight: 2,
-                            fillColor: markerColor,
-                            fillOpacity: 1
-                        }).addTo(map);
-
-                        marker.on('click', function() {
-                            if (window.AndroidMap) {
-                                window.AndroidMap.onVetSelected(vet.id);
-                            }
-                        });
-
-                        vetMarkers.push(marker);
-                    });
-
-                    if (showRoute && targetLat !== 0 && targetLng !== 0) {
-                        var routePoints = [userPos, [targetLat, targetLng]];
-                        routePolyline = L.polyline(routePoints, {
-                            color: '#D93025',
-                            weight: 5,
-                            opacity: 0.9,
-                            dashArray: '10, 10'
-                        }).addTo(map);
-
-                        map.fitBounds(L.latLngBounds(routePoints), { padding: [60, 60] });
-                    }
-                };
-
-                if (document.readyState === 'complete') {
-                    initMap();
-                } else {
-                    window.addEventListener('load', initMap);
-                }
-            </script>
-        </body>
-        </html>
-    """.trimIndent()
 }

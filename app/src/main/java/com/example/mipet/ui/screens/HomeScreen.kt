@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
@@ -29,7 +30,8 @@ fun HomeScreen(navController: NavController) {
                     Triple("Inicio", Icons.Default.Home, Screen.Home.route),
                     Triple("Mascotas", Icons.Default.Pets, Screen.PetList.route),
                     Triple("Veterinarias", Icons.Default.Place, Screen.VetMap.route),
-                    Triple("Asistente", Icons.AutoMirrored.Filled.Chat, Screen.AiAssistant.route)
+                    Triple("Asistente", Icons.AutoMirrored.Filled.Chat, Screen.AiAssistant.route),
+                    Triple("Perfil", Icons.Default.Person, Screen.Profile.route)
                 )
 
                 items.forEach { (label, icon, route) ->
