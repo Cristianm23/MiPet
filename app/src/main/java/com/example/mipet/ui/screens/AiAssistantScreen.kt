@@ -91,7 +91,8 @@ fun AiAssistantScreen(navController: NavController, viewModel: AiViewModel = vie
                         if (data.voiceAgent) {
                             Spacer(modifier = Modifier.height(16.dp))
                             VoiceAgentComponent(
-                                accessToken = data.accessToken,
+                                connection = data.voiceCallConfig,
+                                configurationError = data.voiceCallDiagnostic,
                                 onCloseCall = { viewModel.resetState() }
                             )
                         }
