@@ -42,8 +42,14 @@ class VetViewModel(application: Application) : AndroidViewModel(application) {
             _vetsState.value = Resource.Loading()
             try {
                 _vetsState.value = Resource.Success(repository.getNearbyVets(lat, lng, radiusKm = 8.0))
-            } catch (_: Exception) {
-                _vetsState.value = Resource.Error("No se pudieron cargar veterinarias cercanas.")
+            } catch (e: Exception) {
+            android.util.Log.e(
+                "MIPET_VETS",
+                "Error cargando veterinarias",
+                e
+            )
+            _vetsState.value = Resource.Error("No se pudieron cargar veterinarias cercanas.")
+
             }
         }
     }

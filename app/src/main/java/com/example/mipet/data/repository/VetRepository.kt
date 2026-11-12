@@ -14,6 +14,7 @@ import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
+import android.util.Log
 
 data class GeocodeResult(
     val latitude: Double,
@@ -24,8 +25,10 @@ data class GeocodeResult(
 class VetRepository(private val context: Context) {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(12, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(45, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .callTimeout(60, TimeUnit.SECONDS)
         .build()
 
     fun calculateDistanceKm(
@@ -43,126 +46,137 @@ class VetRepository(private val context: Context) {
         return (distance * 100).roundToInt() / 100.0
     }
 
-    suspend fun getNearbyVets(userLat: Double, userLng: Double, cityName: String = "", radiusKm: Double = 5.0): List<Vet> = withContext(Dispatchers.IO) {
-        val vets = mutableListOf<Vet>()
 
-        val delta = 0.08
-        val minLng = userLng - delta
-        val maxLng = userLng + delta
-        val minLat = userLat - delta
-        val maxLat = userLat + delta
+    suspend fun getNearbyVets(
+        userLat: Double,
+        userLng: Double,
+        cityName: String = "",
+        radiusKm: Double = 8.0
+    ): List<Vet> = withContext(Dispatchers.IO) {
 
-        // Search strictly by Category Tag "amenity=veterinary"
-        val url = if (cityName.isNotBlank()) {
-            val encodedCity = URLEncoder.encode(cityName, "UTF-8")
-            "https://nominatim.openstreetmap.org/search?amenity=veterinary&city=$encodedCity&format=json&addressdetails=1&extratags=1&limit=20"
-        } else {
-            "https://nominatim.openstreetmap.org/search?amenity=veterinary&format=json&addressdetails=1&extratags=1&viewbox=$minLng,$maxLat,$maxLng,$minLat&bounded=1&limit=20"
+        Log.d("MIPET_VETS", "Entró a getNearbyVets")
+        Log.d("MIPET_VETS", "Latitud: $userLat, Longitud: $userLng")
+        Log.d("MIPET_VETS", "Radio: $radiusKm km")
+
+        val radiusMeters = (radiusKm * 1000).toInt()
+
+        val query = """
+        [out:json][timeout:25];
+        (
+          node["amenity"="veterinary"](around:$radiusMeters,$userLat,$userLng);
+          way["amenity"="veterinary"](around:$radiusMeters,$userLat,$userLng);
+          relation["amenity"="veterinary"](around:$radiusMeters,$userLat,$userLng);
+        );
+        out center tags;
+    """.trimIndent()
+
+        val apiKey = com.example.mipet.BuildConfig.OVERPASS_API_KEY
+
+        if (apiKey.isBlank()) {
+            throw Exception("No se configuró la API Key de Overpass.")
         }
 
-        try {
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "MiPetAndroidApp/1.0 (contact: admin@mipet.com)")
-                .build()
+        val url = "https://api.overpass.ch/v1/$apiKey/interpreter"
 
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                val jsonStr = response.body?.string() ?: ""
-                val jsonArray = JSONArray(jsonStr)
-
-                for (i in 0 until jsonArray.length()) {
-                    val item = jsonArray.getJSONObject(i)
-                    val lat = item.optDouble("lat", 0.0)
-                    val lon = item.optDouble("lon", 0.0)
-                    val displayName = item.optString("display_name", "")
-
-                    if (lat != 0.0 && lon != 0.0) {
-                        val dist = calculateDistanceKm(userLat, userLng, lat, lon)
-
-                        if (dist <= 12.0) {
-                            val parts = displayName.split(",").map { it.trim() }
-                            val namePart = parts.firstOrNull() ?: "Consultorio Veterinario"
-                            val addressPart = parts.drop(1).take(3).joinToString(", ")
-
-                            val extraTags = item.optJSONObject("extratags")
-                            val realPhone = extraTags?.optString("phone")?.ifBlank { null }
-                                ?: extraTags?.optString("contact:phone")?.ifBlank { null }
-                                ?: "(Contacto disponible en clínica)"
-
-                            vets.add(
-                                Vet(
-                                    id = "osm_${item.optString("place_id", i.toString())}",
-                                    name = "$namePart 🐾",
-                                    address = addressPart.ifBlank { "Ubicación local" },
-                                    phone = realPhone,
-                                    latitude = lat,
-                                    longitude = lon,
-                                    distanceKm = dist,
-                                    isOpen = i % 2 == 0,
-                                    rating = 4.6 + (i % 4) * 0.1,
-                                    openHours = if (i % 2 == 0) "Abierto 24 Horas" else "Abierto hasta 8:00 PM"
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        // Overpass API fallback query searching by location tag "amenity=veterinary"
-        if (vets.isEmpty()) {
-            try {
-                val radiusMeters = (radiusKm * 1000).toInt()
-                val overpassQuery = "[out:json][timeout:10];(node[\"amenity\"=\"veterinary\"](around:$radiusMeters,$userLat,$userLng);way[\"amenity\"=\"veterinary\"](around:$radiusMeters,$userLat,$userLng););out center 20;"
-                val request = Request.Builder()
-                    .url("https://overpass.kumi.systems/api/interpreter?data=${URLEncoder.encode(overpassQuery, "UTF-8")}")
-                    .header("User-Agent", "MiPetAndroidApp/1.0")
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", "MiPetAndroidApp/1.0")
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .post(
+                okhttp3.FormBody.Builder()
+                    .add("data", query)
                     .build()
+            )
+            .build()
 
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val jsonStr = response.body?.string() ?: ""
-                    val jsonObj = JSONObject(jsonStr)
-                    val elements = jsonObj.optJSONArray("elements")
-                    if (elements != null) {
-                        for (i in 0 until elements.length()) {
-                            val elem = elements.getJSONObject(i)
-                            val lat = if (elem.has("lat")) elem.getDouble("lat") else elem.optJSONObject("center")?.optDouble("lat") ?: 0.0
-                            val lon = if (elem.has("lon")) elem.getDouble("lon") else elem.optJSONObject("center")?.optDouble("lon") ?: 0.0
-                            val tags = elem.optJSONObject("tags")
-                            val name = tags?.optString("name") ?: "Centro Veterinario"
-                            val dist = calculateDistanceKm(userLat, userLng, lat, lon)
+        Log.d("MIPET_VETS", "Enviando consulta a Overpass...")
 
-                            if (dist <= 12.0) {
-                                vets.add(
-                                    Vet(
-                                        id = "op_${elem.optString("id", i.toString())}",
-                                        name = "$name 🏥",
-                                        address = tags?.optString("addr:street") ?: "Sector Local",
-                                        phone = tags?.optString("phone") ?: "(Contacto en clínica)",
-                                        latitude = lat,
-                                        longitude = lon,
-                                        distanceKm = dist,
-                                        isOpen = true,
-                                        rating = 4.8,
-                                        openHours = "Abierto"
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
+        client.newCall(request).execute().use { response ->
+
+            if (!response.isSuccessful) {
+                throw Exception("Error consultando veterinarias: ${response.code}")
             }
-        }
 
-        vets.sortBy { it.distanceKm }
-        vets
+            val json = response.body?.string()
+                ?: throw Exception("Respuesta vacía del servidor")
+
+            Log.d("MIPET_VETS", "Coordenadas: $userLat, $userLng")
+            Log.d("MIPET_VETS", "Respuesta Overpass: $json")
+
+            val elements = JSONObject(json).optJSONArray("elements")
+                ?: return@withContext emptyList()
+
+            Log.d("MIPET_VETS", "Elementos encontrados: ${elements.length()}")
+
+            val vets = mutableListOf<Vet>()
+
+            for (i in 0 until elements.length()) {
+                val item = elements.getJSONObject(i)
+                val tags = item.optJSONObject("tags") ?: continue
+
+                // Solo establecimientos identificados como veterinarias.
+                if (tags.optString("amenity") != "veterinary") continue
+
+                val center = item.optJSONObject("center")
+
+                val lat = if (item.has("lat")) {
+                    item.optDouble("lat")
+                } else {
+                    center?.optDouble("lat") ?: continue
+                }
+
+                val lng = if (item.has("lon")) {
+                    item.optDouble("lon")
+                } else {
+                    center?.optDouble("lon") ?: continue
+                }
+
+                if (!lat.isFinite() || !lng.isFinite()) continue
+                if (lat !in -90.0..90.0 || lng !in -180.0..180.0) continue
+
+                val distance = calculateDistanceKm(
+                    userLat, userLng, lat, lng
+                )
+
+                if (distance > radiusKm) continue
+
+                val name = tags.optString("name")
+                    .takeIf { it.isNotBlank() }
+                    ?: "Veterinaria sin nombre registrado"
+
+                val street = tags.optString("addr:street")
+                val number = tags.optString("addr:housenumber")
+                val address = listOf(street, number)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" ")
+                    .ifBlank { "Dirección no registrada" }
+
+                val phone = tags.optString("phone")
+                    .takeIf { it.isNotBlank() }
+                    ?: tags.optString("contact:phone")
+                        .takeIf { it.isNotBlank() }
+                    ?: "Teléfono no registrado"
+
+                vets.add(
+                    Vet(
+                        id = "osm_${item.optString("type")}_${item.optString("id")}",
+                        name = name,
+                        address = address,
+                        phone = phone,
+                        latitude = lat,
+                        longitude = lng,
+                        distanceKm = distance,
+                        isOpen = false,
+                        rating = 0.0,
+                        openHours = "Horario no registrado"
+                    )
+                )
+            }
+
+            vets.distinctBy { it.id }.sortedBy { it.distanceKm }
+        }
     }
+
 
     suspend fun geocodeAddress(query: String): GeocodeResult? = withContext(Dispatchers.IO) {
         try {
